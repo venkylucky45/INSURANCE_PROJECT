@@ -1,51 +1,45 @@
-# from fastapi import APIRouter
-# from pydantic import BaseModel
+from fastapi import APIRouter
+from pydantic import BaseModel
 
-# from src.GenAi.document_loader import DocumentLoader
-# from src.GenAi.chunker import Chunker
-# from src.GenAi.embedder import Embedder
-# from src.GenAi.vector_store import VectorStore
-# from src.GenAi.retriever import PineconeRetriever
-# from src.GenAi.rag_pipeline import RAGPipeline
+from src.GenAi.document_loader import DocumentLoader
+from src.GenAi.chunker import Chunker
+from src.GenAi.embedder import Embedder
+from src.GenAi.vector_store import VectorStore
+from src.GenAi.retriever import PineconeRetriever
+from src.GenAi.rag_pipeline import RAGPipeline
 
-# router = APIRouter()
+from langchain_ollama import ChatOllama
 
-# # ---------- Initialize RAG System ----------
-# loader = DocumentLoader("policy_docs/")
-# docs = loader.load()
+router = APIRouter()
 
-# chunker = Chunker()
-# chunks = chunker.chunk(docs)
+# ------------------ LOAD DOCUMENTS ---------------------
+loader = DocumentLoader("data/policy_docs")
+docs = loader.load()
 
-# embedder = Embedder()
-# vector_db = VectorStore()
+chunker = Chunker()
+chunks = chunker.chunk(docs)
 
-# # Insert embeddings
-# vectors = []
-# for i, chunk in enumerate(chunks):
-#     vectors.append({
-#         "id": f"chunk_{i}",
-#         "values": embedder.embed(chunk["text"]),
-#         "metadata": {
-#             "text": chunk["text"],
-#             "source": chunk["source"]
-#         }
-#     })
+embedding = Embedder(model="nomic-embed-text")
+vectors = embedding.embed_many(chunks)
 
-# vector_db.insert(vectors)
+vector_store = VectorStore(index_name="insurance-index", dim=len(vectors[0]))
+vector_store.insert(vectors, chunks)
 
-# retriever = PineconeRetriever(vector_db, embedder)
-# rag = RAGPipeline(retriever)
+retriever = PineconeRetriever(vector_store, embedding, top_k=3)
+
+llm = ChatOllama(model="gemma3:4b")
+
+rag = RAGPipeline(retriever, llm)
+
+# ------------------ API REQUEST MODEL ---------------------
+class RAGRequest(BaseModel):
+    question: str
 
 
-# class Query(BaseModel):
-#     question: str
-
-
-# @router.post("/ask")
-# def genai_answer(q: Query):
-#     answer = rag.run(q.question)
-#     return {
-#         "response": answer,
-#         "message": "GenAI RAG response generated successfully."
-#     }
+@router.post("/ask")
+def ask_question(req: RAGRequest):
+    answer = rag.run(req.question)
+    return {
+        "query": req.question,
+        "response": answer
+    }

@@ -59,7 +59,7 @@ llm = ChatOllama(model="gemma3:4b")
 rag = RAGPipeline(retriever, llm)
 
 # Ask a question
-query = "What should prefer which plan is suitable for me?"
+query = "I don't travel frequently which plan is suitable for me"
 answer = rag.run(query)
 
 print("\n================ RAG Answer ================\n")
