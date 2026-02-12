@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+pandas
+numpy
+scikit-learn
+xgboost
+python-dotenv
+
+langchain
+langchain-community
+langchain-ollama
+
+pinecone-client
+openai
+tqdm
+pydantic
+pypdf
